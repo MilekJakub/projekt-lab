@@ -49,6 +49,7 @@ namespace projekt_lab
             {
                 Rates.Add(rate.Code, rate);
             }
+            Rates.Add("PLN", new Rate("złoty", "PLN", 1, 1));
         }
         public MainWindow()
         {
@@ -66,7 +67,17 @@ namespace projekt_lab
 
         private void CalcResult(object sender, RoutedEventArgs e)
         {
-            OutputAmount.Text = "99999";
+            string inputAmount;
+            string inputCode;
+            string outputCode;
+            string outputAmount;
+
+            inputAmount = InputAmount.Text;
+            inputCode = InputCurrencyCode.Text;
+            outputCode = OutputCurrencyCode.Text;
+
+            outputAmount = (Decimal.Parse(inputAmount) * Rates[outputCode].Bid).ToString();
+            OutputAmount.Text = outputAmount;
         }
 
         private void NumberValidation(object sender, TextCompositionEventArgs e)
