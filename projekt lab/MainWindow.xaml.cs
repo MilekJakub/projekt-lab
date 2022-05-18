@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Text;
@@ -27,32 +28,37 @@ namespace projekt_lab
 
         private void DownloadData()
         {
+            CultureInfo info = CultureInfo.CreateSpecificCulture("en-EN");
             WebClient client = new WebClient();
             client.Headers.Add("Accept", "application/xml");
             string xmlRate = client.DownloadString("http://api.nbp.pl/api/exchangerates/tables/C");
             XDocument rateDoc = XDocument.Parse(xmlRate);
             var rates = rateDoc
                 .Element("ArrayOfExchangeRatesTable")
-                .Elements("EchangeRatesTable")
+                .Elements("ExchangeRatesTable")
                 .Elements("Rates")
                 .Elements("Rate")
                 .Select(x => new Rate(
                     x.Element("Currency").Value,
                     x.Element("Code").Value,
-                    decimal.Parse(x.Element("Ask").Value),
-                    decimal.Parse(x.Element("Bid").Value)
+                    decimal.Parse(x.Element("Ask").Value, info),
+                    decimal.Parse(x.Element("Bid").Value, info)
                     ));
+
+            foreach (var rate in rates)
+            {
+                Rates.Add(rate.Code, rate);
+            }
         }
         public MainWindow()
         {
             InitializeComponent();
-            OutputCurrencyCode.Items.Add("USD");
-            OutputCurrencyCode.Items.Add("PLN");
-            OutputCurrencyCode.Items.Add("EUR");
-
-            InputCurrencyCode.Items.Add("USD");
-            InputCurrencyCode.Items.Add("PLN");
-            InputCurrencyCode.Items.Add("EUR");
+            DownloadData();
+            foreach (var code in Rates.Keys)
+            {
+                OutputCurrencyCode.Items.Add(code);
+                InputCurrencyCode.Items.Add(code);
+            }
 
             OutputCurrencyCode.SelectedIndex = 0;
             InputCurrencyCode.SelectedIndex = 1;
