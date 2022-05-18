@@ -67,17 +67,22 @@ namespace projekt_lab
 
         private void CalcResult(object sender, RoutedEventArgs e)
         {
-            string inputAmount;
-            string inputCode;
+            //string inputAmount;
+            //string inputCode;
             string outputCode;
-            string outputAmount;
+            //string outputAmount;
 
-            inputAmount = InputAmount.Text;
-            inputCode = InputCurrencyCode.Text;
+            //inputAmount = InputAmount.Text;
+            //inputCode = InputCurrencyCode.Text;
             outputCode = OutputCurrencyCode.Text;
 
-            outputAmount = (Decimal.Parse(inputAmount) * Rates[outputCode].Bid).ToString();
-            OutputAmount.Text = outputAmount;
+            //outputAmount = (Decimal.Parse(inputAmount) / Rates[outputCode].Ask).ToString();
+            //OutputAmount.Text = outputAmount + " " + inputCode;
+
+            Rate inputRate = Rates[InputCurrencyCode.Text];
+            Rate outputRate = Rates[OutputCurrencyCode.Text];
+            decimal result = decimal.Parse(InputAmount.Text) * inputRate.Ask / outputRate.Ask;
+            OutputAmount.Text = result.ToString("N2") + " " + outputCode;
         }
 
         private void NumberValidation(object sender, TextCompositionEventArgs e)
