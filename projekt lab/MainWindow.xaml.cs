@@ -1,9 +1,13 @@
-﻿using System;
+﻿using Microsoft.Win32;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -23,8 +27,67 @@ namespace projekt_lab
     /// </summary>
     public partial class MainWindow : Window
     {
-        record Rate(string Currency, string Code, decimal Ask, decimal Bid);
+        class TableRates
+        {
+            [JsonPropertyName("table")]
+            public string Table { get; set; }
+
+            [JsonPropertyName("no")]
+            public string Number { get; set; }
+
+            [JsonPropertyName("tradingDate")]
+            public DateTime TradingDate { get; set; }
+
+            [JsonPropertyName("effectiveDate")]
+            public DateTime EffectiveDate { get; set; }
+
+            [JsonPropertyName("rates")]
+            public List<Rate> Rates { get; set; }
+        }
+
+        record Rate
+        {
+            [JsonPropertyName("currency")]
+            public string Currency { get; set; }
+
+            [JsonPropertyName("code")]
+            public string Code { get; set; }
+
+            [JsonPropertyName("ask")]
+            public decimal Ask { get; set; }
+
+            [JsonPropertyName("bid")]
+            public decimal Bid { get; set; }
+
+            public Rate(string Currency, string Code, decimal Ask, decimal Bid)
+            {
+                this.Currency = Currency;
+                this.Code = Code;
+                this.Bid = Bid;
+                this.Ask = Ask;
+            }
+            public Rate()
+            {
+                //
+            }
+        }
+
         Dictionary<string, Rate> Rates = new Dictionary<string, Rate>();
+        private void DownloadJsonData()
+        {
+            WebClient client = new WebClient();
+            client.Headers.Add("Accept", "application/json");
+            string json = client.DownloadString("http://api.nbp.pl/api/exchangerates/tables/C");
+            
+            List<TableRates> tableRates = JsonSerializer.Deserialize<List<TableRates>>(json);
+            TableRates table = tableRates[0];
+            table.Rates.Add(new Rate() { Currency = "złoty", Code = "PLN", Ask = 1, Bid = 1 });
+
+            foreach (var rate in table.Rates)
+            {
+                Rates.Add(rate.Code, rate);
+            }
+        }
 
         private void DownloadData()
         {
@@ -33,17 +96,17 @@ namespace projekt_lab
             client.Headers.Add("Accept", "application/xml");
             string xmlRate = client.DownloadString("http://api.nbp.pl/api/exchangerates/tables/C");
             XDocument rateDoc = XDocument.Parse(xmlRate);
+            
             var rates = rateDoc
                 .Element("ArrayOfExchangeRatesTable")
                 .Elements("ExchangeRatesTable")
                 .Elements("Rates")
                 .Elements("Rate")
-                .Select(x => new Rate(
-                    x.Element("Currency").Value,
-                    x.Element("Code").Value,
-                    decimal.Parse(x.Element("Ask").Value, info),
-                    decimal.Parse(x.Element("Bid").Value, info)
-                    ));
+                .Select(x => 
+                new Rate(x.Element("Currency").Value,
+                         x.Element("Code").Value,
+                         decimal.Parse(x.Element("Ask").Value, info),
+                         decimal.Parse(x.Element("Bid").Value, info)));
 
             foreach (var rate in rates)
             {
@@ -51,10 +114,18 @@ namespace projekt_lab
             }
             Rates.Add("PLN", new Rate("złoty", "PLN", 1, 1));
         }
+
         public MainWindow()
         {
             InitializeComponent();
-            DownloadData();
+            DownloadJsonData();
+            UpdateGUI();
+        }
+
+        private void UpdateGUI()
+        {
+            OutputCurrencyCode.Items.Clear();
+            InputCurrencyCode.Items.Clear();
             foreach (var code in Rates.Keys)
             {
                 OutputCurrencyCode.Items.Add(code);
@@ -67,28 +138,83 @@ namespace projekt_lab
 
         private void CalcResult(object sender, RoutedEventArgs e)
         {
-            //string inputAmount;
-            //string inputCode;
             string outputCode;
-            //string outputAmount;
-
-            //inputAmount = InputAmount.Text;
-            //inputCode = InputCurrencyCode.Text;
             outputCode = OutputCurrencyCode.Text;
-
-            //outputAmount = (Decimal.Parse(inputAmount) / Rates[outputCode].Ask).ToString();
-            //OutputAmount.Text = outputAmount + " " + inputCode;
 
             Rate inputRate = Rates[InputCurrencyCode.Text];
             Rate outputRate = Rates[OutputCurrencyCode.Text];
-            decimal result = decimal.Parse(InputAmount.Text) * inputRate.Ask / outputRate.Ask;
-            OutputAmount.Text = result.ToString("N2") + " " + outputCode;
+            
+            if (decimal.TryParse(InputAmount.Text, out decimal amount))
+            {
+                decimal result = amount * inputRate.Ask / outputRate.Ask;
+                OutputAmount.Text = result.ToString("N2") + " " + outputCode;
+            }
+        }
+
+        private void LoadFileButton_Click(object sender, RoutedEventArgs e)
+        {
+            OpenFileDialog dialog = new OpenFileDialog();
+            dialog.Title = "Wybierz plik:";
+            dialog.Filter = "Pliki tekstowe (*.txt)|*.txt|Wszystkie pliki (*.*)|*.*";
+
+            if (dialog.ShowDialog() == true)
+            {
+                if (File.Exists(dialog.FileName))
+                {
+                    string[] lines = File.ReadAllLines(dialog.FileName);
+                    Rates.Clear();
+                    foreach (var line in lines)
+                    {
+                        string[] tokens = line.Split(";");
+
+                        string code = tokens[0];
+                        string currency = tokens[1];
+                        string askStr = tokens[2];
+                        string bidStr = tokens[3];
+
+                        if (decimal.TryParse(askStr, out decimal ask) && decimal.TryParse(bidStr, out decimal bid))
+                        {
+                            Rate rate = new Rate() { Code = code, Currency = currency, Ask = ask, Bid = bid };
+                            Rates.Add(rate.Code, rate);
+                        }
+                    }
+                    UpdateGUI();
+                }
+            }
+        }
+
+        private void SaveFileJson_Click(object sender, RoutedEventArgs e)
+        {
+            SaveFileDialog saveFileDialog = new SaveFileDialog();
+            saveFileDialog.Filter = "Pliki JSON (*.json)|*.json";
+            saveFileDialog.Title = "Zapisz plik:";
+
+            if (saveFileDialog.ShowDialog() == true)
+            {
+                string json = JsonSerializer.Serialize(Rates);
+                File.WriteAllText(saveFileDialog.FileName, json);
+            }
+        }
+
+        private void LoadFileJson_Click(object sender, RoutedEventArgs e)
+        {
+            OpenFileDialog dialog = new OpenFileDialog();
+            dialog.Title = "Wybierz plik:";
+            dialog.Filter = "Pliki json (*.json)|*.json|Wszystkie pliki (*.*)|*.*";
+
+            if (dialog.ShowDialog() == true)
+            {
+                string content = File.ReadAllText(dialog.FileName);
+                Rates = JsonSerializer.Deserialize<Dictionary<string, Rate>>(content);
+                UpdateGUI();
+            }
         }
 
         private void NumberValidation(object sender, TextCompositionEventArgs e)
         {
             string oldText = InputAmount.Text;
             string deltaText = e.Text;
+
             e.Handled = !decimal.TryParse(oldText + deltaText, out decimal value);
         }
     }

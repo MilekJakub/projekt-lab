@@ -18,6 +18,7 @@
             <RowDefinition/>
             <RowDefinition/>
             <RowDefinition/>
+            <RowDefinition/>
         </Grid.RowDefinitions>
 
         <TextBox x:Name="OutputAmount" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" FontSize="48" TextAlignment="Right" VerticalContentAlignment="Center" Padding="10" Margin="10" IsEnabled="False">
@@ -37,13 +38,25 @@
 
         <Button Grid.Column="0" Grid.Row="2" Grid.ColumnSpan="3" Margin="10" Background="Beige" Click="CalcResult">
             <StackPanel Orientation="Vertical">
-                <TextBlock FontSize="36" Foreground="Chartreuse" TextAlignment="Center">
+                <TextBlock FontSize="36" Foreground="DarkGreen" TextAlignment="Center">
                     Przelicz
                 </TextBlock>
                 <TextBlock FontSize="18" TextAlignment="Center">
                     po cenie kupna
                 </TextBlock>
             </StackPanel>
+        </Button>
+
+        <Button x:Name="LoadFileButton" Grid.Column="0" Grid.Row="3"  Margin="10" Background="Beige" FontSize="28" Foreground="DarkOrange" Click="LoadFileButton_Click">
+            Wczytaj z pliku
+        </Button>
+
+        <Button x:Name="SaveFileJson" Grid.Column="1" Grid.Row="3"  Margin="10" Background="Beige" FontSize="28" Foreground="DarkOrange" Click="SaveFileJson_Click">
+            Zapisz JSON
+        </Button>
+
+        <Button x:Name="LoadFileJson" Grid.Column="2" Grid.Row="3"  Margin="10" Background="Beige" FontSize="28" Foreground="DarkOrange" Click="LoadFileJson_Click">
+            Wczytaj JSON
         </Button>
 
     </Grid>
